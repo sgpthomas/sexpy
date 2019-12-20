@@ -1,43 +1,77 @@
-pub mod parser;
+mod parsers;
+mod std_impls;
+pub use parsers::*;
+pub use sexpy_derive::Sexpy;
+
+pub use nom::{
+    branch::alt,
+    bytes::complete::tag,
+    character::complete::{
+        alpha1, alphanumeric0, digit1, multispace0, multispace1,
+    },
+    combinator::opt,
+    error::{convert_error, VerboseError},
+    multi::many0,
+    sequence::{preceded, tuple},
+    Err, IResult,
+};
+
+pub trait Sexpy {
+    fn process(input: &str) -> Result<Self, String>
+    where
+        Self: Sized,
+    {
+        match Self::parser(input) {
+            Ok((_, x)) => Ok(x),
+            Err(Err::Error(e)) => Err(convert_error(input, e)),
+            Err(Err::Failure(e)) => Err(convert_error(input, e)),
+            Err(Err::Incomplete(_)) => Err("Need more bytes to nom".to_string()),
+        }
+    }
+
+    fn parser<'a>(
+        input: &'a str,
+    ) -> IResult<&'a str, Self, VerboseError<&'a str>>
+    where
+        Self: Sized;
+}
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::*;
-    use lexpr::Value;
+    use crate::*;
+    use sexpy_derive::Sexpy;
 
-    #[derive(Debug)]
-    pub struct PortDef {
-        name: String,
-        width: i64,
+    #[derive(Debug, Sexpy)]
+    enum Input {
+        Port(String, u64),
+        Snort(String, String),
     }
 
-    pub fn test_parse(v: Value) -> Result<Vec<PortDef>, ()> {
-        let port_parser =
-            match_head("port").then(match_var()).then(match_i64());
+    #[derive(Debug, Sexpy)]
+    enum Output {
+        Hi(Input, Option<u64>),
+        Bye(String),
+    }
 
-        let snort_parser =
-            match_head("snort").then(match_var()).then(match_i64());
+    #[derive(Debug, Sexpy)]
+    struct IO {
+        ins: Vec<Input>,
+        outs: Vec<Output>,
+    }
 
-        let res = port_parser
-            .or(snort_parser)
-            .list()
-            .call(v)
-            .into_iter()
-            .map(|(name, width)| PortDef { name, width })
-            .collect();
-
-        Ok(res)
-
-        // let (name, width) = port_parser.call(v);
-        // Ok(PortDef { name, width })
+    #[derive(Debug, Sexpy)]
+    enum Expr {
+        Add(Box<Expr>, Box<Expr>),
+        Sub(Box<Expr>, Box<Expr>),
+        Num(u64),
     }
 
     #[test]
     fn it_works() {
-        let v = from_file("stdlib.rkt");
-        println!("{:?}", v);
-        let r = test_parse(v).expect("Parse unsucessful");
-        println!("{:?}", r);
-        assert_eq!(2, 3);
+        let input = "(add (num 4) (sub (num 10) (num 4)))";
+        match Expr::process(input) {
+            Ok(x) => println!("{:?}", x),
+            Err(s) => println!("{}", s),
+        }
     }
 }
