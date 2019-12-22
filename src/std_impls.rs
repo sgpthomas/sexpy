@@ -2,7 +2,7 @@ use crate::*;
 use std::rc::Rc;
 
 impl Sexpy for String {
-    fn parser(input: &str) -> IResult<&str, Self, VerboseError<&str>>
+    fn sexp_parse(input: &str) -> IResult<&str, Self, VerboseError<&str>>
     where
         Self: Sized,
     {
@@ -12,7 +12,7 @@ impl Sexpy for String {
 }
 
 impl Sexpy for u64 {
-    fn parser(input: &str) -> IResult<&str, Self, VerboseError<&str>>
+    fn sexp_parse(input: &str) -> IResult<&str, Self, VerboseError<&str>>
     where
         Self: Sized,
     {
@@ -23,41 +23,42 @@ impl Sexpy for u64 {
 }
 
 impl<T: Sexpy> Sexpy for Option<T> {
-    fn parser(input: &str) -> IResult<&str, Self, VerboseError<&str>>
+    fn sexp_parse(input: &str) -> IResult<&str, Self, VerboseError<&str>>
     where
         Self: Sized,
     {
-        let (next, res) = opt(T::parser)(input)?;
+        let (next, res) = opt(T::sexp_parse)(input)?;
         Ok((next, res))
     }
 }
 
 impl<T: Sexpy> Sexpy for Vec<T> {
-    fn parser(input: &str) -> IResult<&str, Self, VerboseError<&str>>
+    fn sexp_parse(input: &str) -> IResult<&str, Self, VerboseError<&str>>
     where
         Self: Sized,
     {
-        let (next, res) = many0(T::parser)(input)?;
+        let (next, res) =
+            s_exp(many0(preceded(multispace0, T::sexp_parse)))(input)?;
         Ok((next, res))
     }
 }
 
 impl<T: Sexpy> Sexpy for Box<T> {
-    fn parser(input: &str) -> IResult<&str, Self, VerboseError<&str>>
+    fn sexp_parse(input: &str) -> IResult<&str, Self, VerboseError<&str>>
     where
         Self: Sized,
     {
-        let (next, res) = T::parser(input)?;
+        let (next, res) = T::sexp_parse(input)?;
         Ok((next, Box::new(res)))
     }
 }
 
 impl<T: Sexpy> Sexpy for Rc<T> {
-    fn parser(input: &str) -> IResult<&str, Self, VerboseError<&str>>
+    fn sexp_parse(input: &str) -> IResult<&str, Self, VerboseError<&str>>
     where
         Self: Sized,
     {
-        let (next, res) = T::parser(input)?;
+        let (next, res) = T::sexp_parse(input)?;
         Ok((next, Rc::new(res)))
     }
 }

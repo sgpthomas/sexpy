@@ -1,11 +1,17 @@
+mod attrs;
+
 extern crate proc_macro;
 
+use attrs::Attrs;
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::{abort_call_site, proc_macro_error};
 use quote::quote;
-use syn::{parse_macro_input, DeriveInput};
+use syn::{
+    parse_macro_input, Data, DataEnum, DataStruct, DeriveInput, Fields, Ident,
+    Variant,
+};
 
-#[proc_macro_derive(Sexpy)]
+#[proc_macro_derive(Sexpy, attributes(sexpy))]
 #[proc_macro_error]
 pub fn sexpy_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // Construct a represntation of Rust code as a syntax tree
@@ -16,10 +22,91 @@ pub fn sexpy_derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     impl_sexpy(&input).into()
 }
 
-fn field_parser(fields: &syn::Fields) -> Vec<TokenStream> {
+/// Processes the top level `DeriveInput`
+fn impl_sexpy(ast: &DeriveInput) -> TokenStream {
+    // name of the Struct or Enum
+    let name = &ast.ident;
+
+    let attrs = Attrs::from_attributes(&ast.attrs);
+
+    let parser: TokenStream = match &ast.data {
+        Data::Enum(data) => enum_parser(&name, data, &attrs),
+        Data::Struct(data) => struct_parser(&name, data, &attrs),
+        _ => abort_call_site!("Only works on structs or enums"),
+    };
+
+    // construct Sexpy impl
+    quote! {
+        impl Sexpy for #name {
+            fn sexp_parse<'a>(input: &'a str) -> IResult<&'a str, Self, VerboseError<&'a str>>
+            where
+                Self: Sized {
+                #parser
+            }
+        }
+    }
+}
+
+fn enum_parser(
+    parse_name: &Ident,
+    data: &DataEnum,
+    attrs: &Attrs,
+) -> TokenStream {
+    let parsers: Vec<TokenStream> = data
+        .variants
+        .iter()
+        .map(|var| {
+            let attrs = Attrs::from_attributes(&var.attrs);
+            variant_parser(parse_name, var, &attrs)
+        })
+        .collect();
+    let parser = if parsers.len() == 1 {
+        quote! {
+            #( #parsers )*
+        }
+    } else {
+        quote! {
+            alt((#( #parsers ),*))
+        }
+    };
+    match &attrs.name {
+        Some(name) => quote! {
+            head(#name, #parser)(input)
+        },
+        None => quote! {
+            #parser(input)
+        },
+    }
+}
+
+fn struct_parser(
+    parse_name: &Ident,
+    data: &DataStruct,
+    attrs: &Attrs,
+) -> TokenStream {
+    let fields = field_parser(&data.fields);
+    let head_name = match &attrs.name {
+        Some(s) => s.clone(),
+        None => parse_name.to_string().to_lowercase(),
+    };
+    let args = field_arguments(&data.fields);
+    let args_str: Vec<String> = args.iter().map(|x| x.to_string()).collect();
+    quote! {
+        let (next, (#(#args),*)) = head(
+            #head_name,
+            tuple((
+                #(context(#args_str, preceded(multispace1, #fields))),*
+            )))(input)?;
+        Ok((next, #parse_name {
+            #(#args),*
+        }))
+    }
+}
+
+fn field_parser(fields: &Fields) -> Vec<TokenStream> {
     let field_iter = match fields {
-        syn::Fields::Unnamed(fields) => fields.unnamed.iter(),
-        syn::Fields::Named(fields) => fields.named.iter(),
+        Fields::Unnamed(fields) => fields.unnamed.iter(),
+        Fields::Named(fields) => fields.named.iter(),
         _ => abort_call_site!("fields"),
     };
     field_iter
@@ -36,21 +123,18 @@ fn field_parser(fields: &syn::Fields) -> Vec<TokenStream> {
                 _ => None,
             }
             .unwrap();
-            let ident = &segs.ident;
+            let type_name = &segs.ident;
             if let syn::PathArguments::AngleBracketed(args) = &segs.arguments {
                 quote! {
-                    preceded(multispace0, #ident::#args::parser)
+                    #type_name::#args::sexp_parse
                 }
             } else {
                 quote! {
-                    preceded(multispace1, #ident::parser)
+                    #type_name::sexp_parse
                 }
             }
         })
         .collect()
-    // quote! {
-    //     #( #toks ),*
-    // }
 }
 
 fn field_arguments(fields: &syn::Fields) -> Vec<syn::Ident> {
@@ -75,84 +159,40 @@ fn field_arguments(fields: &syn::Fields) -> Vec<syn::Ident> {
     }
 }
 
-fn variant_parser(id: &syn::Ident, var: &syn::Variant) -> TokenStream {
+fn variant_parser(id: &Ident, var: &Variant, attrs: &Attrs) -> TokenStream {
     let name = &var.ident;
-    let head_name = &name.to_string().to_lowercase();
+    let head_name = match &attrs.name {
+        Some(name) => name.clone(),
+        None => name.to_string().to_lowercase(),
+    };
     let fields = field_parser(&var.fields);
     let args = field_arguments(&var.fields);
-    if var.fields.len() == 1 {
-        quote! {
-            |i: &'a str| {
-                let (next, #(#args)*) = head(
-                    #head_name,
-                    #( #fields )*
-                )(i)?;
-                Ok((next, #id::#name(#(#args)*)))
-            }
-        }
-    } else {
-        quote! {
-            |i: &'a str| {
-                let (next, (#(#args),*)) = head(
-                    #head_name,
-                    tuple((#( #fields ),*)),
-                )(i)?;
-                Ok((next, #id::#name(#(#args),*)))
-            }
-        }
-    }
-}
-
-fn impl_sexpy(ast: &DeriveInput) -> TokenStream {
-    let name = &ast.ident;
-
-    let parser: TokenStream = match &ast.data {
-        syn::Data::Enum(data) => {
-            let ps: Vec<TokenStream> = data
-                .variants
-                .iter()
-                .map(|var| variant_parser(name, var))
-                .collect();
-            if ps.len() == 1 {
-                quote! {
-                    #(#ps)*(input)
-                }
-            } else {
-                quote! {
-                    alt((#(#ps),*))(input)
-                }
-            }
-        }
-        syn::Data::Struct(data) => {
-            let fields = field_parser(&data.fields);
-            let head_name = &name.to_string().to_lowercase();
-            let args = field_arguments(&data.fields);
+    let (arg_syn, field_syn) = if var.fields.len() == 1 {
+        (
             quote! {
-                let (next, (#(#args),*)) = head(
-                    #head_name,
-                    tuple((#(preceded(multispace1, s_exp(#fields))),*)))(input)?;
-                Ok((next, #name {
-                    #(#args),*
-                }))
-            }
-        }
-        _ => abort_call_site!("not implemented for structs yet"),
+                #( #args )*
+            },
+            quote! {
+                #( preceded(multispace1, #fields) )*
+            },
+        )
+    } else {
+        (
+            quote! {
+                (#( #args ),*)
+            },
+            quote! {
+                tuple((#( preceded(multispace1, #fields) ),*))
+            },
+        )
     };
     quote! {
-        impl Sexpy for #name {
-            fn parser<'a>(input: &'a str) -> IResult<&'a str, Self, VerboseError<&'a str>>
-            where
-                Self: Sized {
-                #parser
-            }
+        |i: &'a str| {
+            let (next, #arg_syn) = head(
+                #head_name,
+                #field_syn,
+            )(i)?;
+            Ok((next, #id::#name(#(#args),*)))
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
     }
 }

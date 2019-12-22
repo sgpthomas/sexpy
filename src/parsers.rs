@@ -1,4 +1,5 @@
 use nom::{
+    branch::alt,
     bytes::complete::tag,
     character::complete::{char, multispace0},
     combinator::cut,
@@ -14,9 +15,12 @@ where
     F: Fn(&'a str) -> IResult<&'a str, O1, VerboseError<&'a str>>,
 {
     delimited(
-        char('('),
+        alt((char('('), char('['))),
         preceded(multispace0, inner),
-        context("closing paren", cut(preceded(multispace0, char(')')))),
+        context(
+            "closing paren",
+            cut(preceded(multispace0, alt((char(')'), char(']'))))),
+        ),
     )
 }
 
@@ -27,5 +31,8 @@ pub fn head<'a, O1, F>(
 where
     F: Fn(&'a str) -> IResult<&'a str, O1, VerboseError<&'a str>>,
 {
-    s_exp(preceded(context("head", tag(head_tag)), cut(inner)))
+    s_exp(preceded(
+        context("incorrect head", tag(head_tag)),
+        cut(inner),
+    ))
 }
