@@ -2,7 +2,7 @@ mod attrs;
 
 extern crate proc_macro;
 
-use attrs::Attrs;
+use attrs::{ApplyAttr, FieldAttrs, SexpyAttr, TyAttrs};
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::{abort_call_site, proc_macro_error};
 use quote::quote;
@@ -27,18 +27,19 @@ fn impl_sexpy(ast: &DeriveInput) -> TokenStream {
     // name of the Struct or Enum
     let name = &ast.ident;
 
-    let attrs = Attrs::from_attributes(&ast.attrs);
+    let mut attrs = TyAttrs::from_attributes(&ast.attrs);
 
     let parser: TokenStream = match &ast.data {
         Data::Enum(data) => enum_parser(&name, data, &attrs),
-        Data::Struct(data) => struct_parser(&name, data, &attrs),
+        Data::Struct(data) => struct_parser(&name, data, &mut attrs),
         _ => abort_call_site!("Only works on structs or enums"),
     };
 
     // construct Sexpy impl
     quote! {
         impl Sexpy for #name {
-            fn sexp_parse<'a>(input: &'a str) -> IResult<&'a str, Self, VerboseError<&'a str>>
+            fn sexp_parse<'a>(input: &'a str) ->
+                IResult<&'a str, Self, VerboseError<&'a str>>
             where
                 Self: Sized {
                 #parser
@@ -50,14 +51,14 @@ fn impl_sexpy(ast: &DeriveInput) -> TokenStream {
 fn enum_parser(
     parse_name: &Ident,
     data: &DataEnum,
-    attrs: &Attrs,
+    attrs: &TyAttrs,
 ) -> TokenStream {
     let parsers: Vec<TokenStream> = data
         .variants
         .iter()
         .map(|var| {
-            let attrs = Attrs::from_attributes(&var.attrs);
-            variant_parser(parse_name, var, &attrs)
+            let mut attrs = FieldAttrs::from_attributes(&var.attrs);
+            variant_parser(parse_name, var, &mut attrs)
         })
         .collect();
     let parser = if parsers.len() == 1 {
@@ -69,37 +70,37 @@ fn enum_parser(
             alt((#( #parsers ),*))
         }
     };
-    match &attrs.name {
-        Some(name) => quote! {
-            head(#name, #parser)(input)
-        },
-        None => quote! {
-            #parser(input)
-        },
+
+    let ts = attrs.apply(parser);
+
+    quote! {
+        #ts(input)
     }
 }
 
 fn struct_parser(
-    parse_name: &Ident,
+    struct_name: &Ident,
     data: &DataStruct,
-    attrs: &Attrs,
+    attrs: &mut TyAttrs,
 ) -> TokenStream {
     let fields = field_parser(&data.fields);
-    let head_name = match &attrs.name {
-        Some(s) => s.clone(),
-        None => parse_name.to_string().to_lowercase(),
+    if attrs.head.is_none() {
+        attrs.head = Some(struct_name.to_string().to_lowercase())
     };
     let args = field_arguments(&data.fields);
     let args_str: Vec<String> = args.iter().map(|x| x.to_string()).collect();
+
+    let p = quote! {
+        tuple((
+            #(context(#args_str, preceded(multispace1, #fields))),*
+        ))
+    };
+
+    let ts = attrs.apply(p);
+
     quote! {
-        let (next, (#(#args),*)) = head(
-            #head_name,
-            tuple((
-                #(context(#args_str, preceded(multispace1, #fields))),*
-            )))(input)?;
-        Ok((next, #parse_name {
-            #(#args),*
-        }))
+        let (next, (#(#args),*)) = #ts(input)?;
+        Ok((next, #struct_name { #(#args),* }))
     }
 }
 
@@ -137,17 +138,17 @@ fn field_parser(fields: &Fields) -> Vec<TokenStream> {
         .collect()
 }
 
-fn field_arguments(fields: &syn::Fields) -> Vec<syn::Ident> {
+fn field_arguments(fields: &Fields) -> Vec<Ident> {
     match fields {
-        syn::Fields::Unnamed(fields) => fields
+        Fields::Unnamed(fields) => fields
             .unnamed
             .iter()
             .enumerate()
             .map(|(idx, _)| {
-                syn::Ident::new(&format!("a_{}", idx), Span::call_site())
+                Ident::new(&format!("a_{}", idx), Span::call_site())
             })
             .collect(),
-        syn::Fields::Named(fields) => fields
+        Fields::Named(fields) => fields
             .named
             .iter()
             .map(|f| match &f.ident {
@@ -159,12 +160,12 @@ fn field_arguments(fields: &syn::Fields) -> Vec<syn::Ident> {
     }
 }
 
-fn variant_parser(id: &Ident, var: &Variant, attrs: &Attrs) -> TokenStream {
+fn variant_parser(
+    id: &Ident,
+    var: &Variant,
+    attrs: &mut FieldAttrs,
+) -> TokenStream {
     let name = &var.ident;
-    let head_name = match &attrs.name {
-        Some(name) => name.clone(),
-        None => name.to_string().to_lowercase(),
-    };
     let fields = field_parser(&var.fields);
     let args = field_arguments(&var.fields);
     let (arg_syn, field_syn) = if var.fields.len() == 1 {
@@ -186,12 +187,11 @@ fn variant_parser(id: &Ident, var: &Variant, attrs: &Attrs) -> TokenStream {
             },
         )
     };
+
+    let ts = attrs.apply(field_syn);
     quote! {
         |i: &'a str| {
-            let (next, #arg_syn) = head(
-                #head_name,
-                #field_syn,
-            )(i)?;
+            let (next, #arg_syn) = #ts(i)?;
             Ok((next, #id::#name(#(#args),*)))
         }
     }

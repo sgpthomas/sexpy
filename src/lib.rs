@@ -43,7 +43,7 @@ mod tests {
     use std::fs;
 
     #[derive(Debug, Sexpy)]
-    #[sexpy(name = "define/component")]
+    #[sexpy(head = "define/component")]
     struct Component {
         name: String,
         inputs: Vec<Portdef>,
@@ -52,13 +52,14 @@ mod tests {
     }
 
     #[derive(Debug, Sexpy)]
-    #[sexpy(name = "port")]
+    #[sexpy(head = "port")]
     struct Portdef {
         name: String,
         width: u64,
     }
 
     #[derive(Debug, Sexpy)]
+    #[sexpy(head = "@")]
     enum Port {
         Comp(String, String),
         This(String),
@@ -66,9 +67,9 @@ mod tests {
 
     #[derive(Debug, Sexpy)]
     enum Structure {
-        #[sexpy(name = "new")]
+        #[sexpy(head = "new")]
         Decl(String, String),
-        #[sexpy(name = "->")]
+        #[sexpy(head = "->")]
         Wire(Port, Port),
     }
 

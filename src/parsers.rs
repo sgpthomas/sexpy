@@ -8,7 +8,7 @@ use nom::{
     IResult,
 };
 
-pub fn s_exp<'a, O1, F>(
+pub fn surround<'a, O1, F>(
     inner: F,
 ) -> impl Fn(&'a str) -> IResult<&'a str, O1, VerboseError<&'a str>>
 where
@@ -31,8 +31,5 @@ pub fn head<'a, O1, F>(
 where
     F: Fn(&'a str) -> IResult<&'a str, O1, VerboseError<&'a str>>,
 {
-    s_exp(preceded(
-        context("incorrect head", tag(head_tag)),
-        cut(inner),
-    ))
+    preceded(context("incorrect head", tag(head_tag)), cut(inner))
 }

@@ -38,7 +38,7 @@ impl<T: Sexpy> Sexpy for Vec<T> {
         Self: Sized,
     {
         let (next, res) =
-            s_exp(many0(preceded(multispace0, T::sexp_parse)))(input)?;
+            surround(many0(preceded(multispace0, T::sexp_parse)))(input)?;
         Ok((next, res))
     }
 }
