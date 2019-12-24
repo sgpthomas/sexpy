@@ -110,7 +110,7 @@ impl ApplyAttr for TyAttrs {
         };
 
         if self.surround {
-            res = quote! { surround(#res)}
+            res = quote! { (|i: &'a str| surround(#res, i)) }
         }
 
         res
@@ -176,7 +176,7 @@ impl ApplyAttr for FieldAttrs {
         };
 
         if self.surround {
-            res = quote! { surround(#res)}
+            res = quote! { (|i: &'a str| surround(#res, i)) }
         }
 
         res

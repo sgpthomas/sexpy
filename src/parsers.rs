@@ -1,27 +1,38 @@
 use nom::{
-    branch::alt,
     bytes::complete::tag,
-    character::complete::{char, multispace0},
-    combinator::cut,
-    error::{context, VerboseError},
+    character::complete::{anychar, char, multispace0},
+    combinator::{cut, peek},
+    error::{context, ParseError, VerboseError},
     sequence::{delimited, preceded},
+    Err::Error,
     IResult,
 };
 
 pub fn surround<'a, O1, F>(
     inner: F,
-) -> impl Fn(&'a str) -> IResult<&'a str, O1, VerboseError<&'a str>>
+    input: &'a str,
+) -> IResult<&'a str, O1, VerboseError<&'a str>>
 where
     F: Fn(&'a str) -> IResult<&'a str, O1, VerboseError<&'a str>>,
 {
-    delimited(
-        alt((char('('), char('['))),
-        preceded(multispace0, inner),
-        context(
-            "closing paren",
-            cut(preceded(multispace0, alt((char(')'), char(']'))))),
-        ),
-    )
+    let res: IResult<&'a str, char, VerboseError<&'a str>> =
+        peek(context("test", anychar))(input);
+
+    if let Ok((_, '(')) = res {
+        delimited(
+            char('('),
+            preceded(multispace0, inner),
+            context("closing paren", cut(preceded(multispace0, char(')')))),
+        )(input)
+    } else if let Ok((_, '[')) = res {
+        delimited(
+            char('['),
+            preceded(multispace0, inner),
+            context("closing paren", cut(preceded(multispace0, char(']')))),
+        )(input)
+    } else {
+        IResult::Err(Error(VerboseError::from_char(input, '(')))
+    }
 }
 
 pub fn head<'a, O1, F>(
