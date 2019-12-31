@@ -9,22 +9,38 @@ use syn::{
 
 // ============ Trait Definitions ================ //
 
+/// Struct that represents the Sexpy attribute syntax.
+/// The syntax is simply a comma separated list of syntax
+/// defined by the parameter `EnumT`.
 struct SexpyAttrSyn<EnumT> {
     attrs: Punctuated<EnumT, Token![,]>,
 }
 
+/// Generically implement parse for SexpyAttrSyn over
+/// parsable types.
 impl<EnumT: Parse> Parse for SexpyAttrSyn<EnumT> {
     fn parse(input: ParseStream) -> Result<Self> {
-        // let _paren = parenthesized!(content in input);
         let attrs = input.parse_terminated(EnumT::parse)?;
 
         Ok(SexpyAttrSyn { attrs })
     }
 }
 
+/// A trait that handles generalizing definitions and syntax
+/// made over single attributes to lists of attributes
 pub trait SexpyAttr<EnumT: Parse> {
-    fn empty() -> Self;
+    /// The default constructor of Self. Represents
+    /// the default settings of the attributes
+    fn default() -> Self;
+
+    /// Given a mutable reference to self, make the minimum
+    /// changes to update `self` with `enm`.
     fn add_enum(&mut self, enm: &EnumT);
+
+    /// Modify a token stream with the attributes in self
+    fn apply(&self, ts: TokenStream) -> TokenStream;
+
+    /// Generate `Self` from a slice of `syn::Atribute` syntax
     fn from_attributes(attributes: &[Attribute]) -> Self
     where
         Self: Sized,
@@ -38,7 +54,7 @@ pub trait SexpyAttr<EnumT: Parse> {
             .map(|attr_syn| attr_syn.attrs)
             .flatten()
             .collect();
-        let mut res = Self::empty();
+        let mut res = Self::default();
         for e in attr_enums {
             res.add_enum(&e);
         }
@@ -46,12 +62,7 @@ pub trait SexpyAttr<EnumT: Parse> {
     }
 }
 
-pub trait ApplyAttr {
-    fn apply(&self, ts: TokenStream) -> TokenStream;
-}
-
 // =============== Type Level Attributes ================ //
-
 pub struct TyAttrs {
     pub head: Option<String>,
     pub surround: bool,
@@ -64,11 +75,24 @@ pub enum TyAttrEnum {
 }
 
 impl SexpyAttr<TyAttrEnum> for TyAttrs {
-    fn empty() -> Self {
+    fn default() -> Self {
         TyAttrs {
             head: None,
             surround: true,
         }
+    }
+
+    fn apply(&self, ts: TokenStream) -> TokenStream {
+        let mut res = ts;
+        if let Some(head) = &self.head {
+            res = quote! { (head(#head, #res)) }
+        };
+
+        if self.surround {
+            res = quote! { (|i: &'a str| surround(#res, i)) }
+        }
+
+        res
     }
 
     fn add_enum(&mut self, e: &TyAttrEnum) {
@@ -102,21 +126,6 @@ impl Parse for TyAttrEnum {
     }
 }
 
-impl ApplyAttr for TyAttrs {
-    fn apply(&self, ts: TokenStream) -> TokenStream {
-        let mut res = ts;
-        if let Some(head) = &self.head {
-            res = quote! { head(#head, #res) }
-        };
-
-        if self.surround {
-            res = quote! { (|i: &'a str| surround(#res, i)) }
-        }
-
-        res
-    }
-}
-
 // ============ field level attributes ================ //
 pub struct FieldAttrs {
     pub head: Option<String>,
@@ -130,11 +139,24 @@ pub enum FieldAttrEnum {
 }
 
 impl SexpyAttr<FieldAttrEnum> for FieldAttrs {
-    fn empty() -> Self {
+    fn default() -> Self {
         FieldAttrs {
             head: None,
             surround: false,
         }
+    }
+
+    fn apply(&self, ts: TokenStream) -> TokenStream {
+        let mut res = ts;
+        if let Some(head) = &self.head {
+            res = quote! { preceded(multispace1, head(#head, #res)) }
+        };
+
+        if self.surround {
+            res = quote! { (|i: &'a str| surround(#res, i)) }
+        }
+
+        res
     }
 
     fn add_enum(&mut self, e: &FieldAttrEnum) {
@@ -165,20 +187,5 @@ impl Parse for FieldAttrEnum {
                 format!("expected `name`, found {}", field),
             )),
         }
-    }
-}
-
-impl ApplyAttr for FieldAttrs {
-    fn apply(&self, ts: TokenStream) -> TokenStream {
-        let mut res = ts;
-        if let Some(head) = &self.head {
-            res = quote! { head(#head, #res) }
-        };
-
-        if self.surround {
-            res = quote! { (|i: &'a str| surround(#res, i)) }
-        }
-
-        res
     }
 }

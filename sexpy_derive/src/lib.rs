@@ -2,7 +2,7 @@ mod attrs;
 
 extern crate proc_macro;
 
-use attrs::{ApplyAttr, FieldAttrs, SexpyAttr, TyAttrs};
+use attrs::{FieldAttrs, SexpyAttr, TyAttrs};
 use proc_macro2::{Span, TokenStream};
 use proc_macro_error::{abort_call_site, proc_macro_error};
 use quote::quote;
@@ -27,8 +27,16 @@ fn impl_sexpy(ast: &DeriveInput) -> TokenStream {
     // name of the Struct or Enum
     let name = &ast.ident;
 
+    // parse type level attributes
     let mut attrs = TyAttrs::from_attributes(&ast.attrs);
 
+    // default head is `name`
+    if attrs.head.is_none() {
+        attrs.head = Some(name.to_string().to_lowercase())
+    };
+
+    // check what type of thing we have and call the corresponding
+    // parser
     let parser: TokenStream = match &ast.data {
         Data::Enum(data) => enum_parser(&name, data, &attrs),
         Data::Struct(data) => struct_parser(&name, data, &mut attrs),
@@ -48,11 +56,18 @@ fn impl_sexpy(ast: &DeriveInput) -> TokenStream {
     }
 }
 
+/// Generates the parser for `enum` types
 fn enum_parser(
     parse_name: &Ident,
     data: &DataEnum,
     attrs: &TyAttrs,
 ) -> TokenStream {
+    // abort if there are no variants
+    if data.variants.len() == 0 {
+        abort_call_site!("Can not construct enum with no cases.")
+    }
+
+    // generate a parser for each variant
     let parsers: Vec<TokenStream> = data
         .variants
         .iter()
@@ -61,6 +76,8 @@ fn enum_parser(
             variant_parser(parse_name, var, &mut attrs)
         })
         .collect();
+
+    // we can't use `alt` if there is only one parser
     let parser = if parsers.len() == 1 {
         quote! {
             #( #parsers )*
@@ -71,74 +88,76 @@ fn enum_parser(
         }
     };
 
+    // apply the attribute changes
     let ts = attrs.apply(parser);
 
+    // construct final parser by applying the input
     quote! {
         #ts(input)
     }
 }
 
+/// Generates the parser for `struct` types
 fn struct_parser(
     struct_name: &Ident,
     data: &DataStruct,
     attrs: &mut TyAttrs,
 ) -> TokenStream {
+    // generate a parser for each field
     let fields = field_parser(&data.fields);
-    if attrs.head.is_none() {
-        attrs.head = Some(struct_name.to_string().to_lowercase())
+
+    // get the identifiers from the fields
+    let idents = field_idents(&data.fields);
+    let idents_str: Vec<String> =
+        idents.iter().map(|x| x.to_string()).collect();
+    let bindings = field_binder_syn(&idents);
+
+    // turn the field parsers into a single tokenstream
+    let parser = if data.fields.len() == 0 {
+        quote! {
+            multispace0
+        }
+    } else if data.fields.len() <= 1 {
+        quote! {
+            #(context(#idents_str, preceded(multispace1, #fields)))*
+        }
+    } else {
+        quote! {
+            tuple((
+                #(context(#idents_str, preceded(multispace1, #fields))),*
+            ))
+        }
     };
-    let args = field_arguments(&data.fields);
-    let args_str: Vec<String> = args.iter().map(|x| x.to_string()).collect();
 
-    let p = quote! {
-        tuple((
-            #(context(#args_str, preceded(multispace1, #fields))),*
-        ))
-    };
-
-    let ts = attrs.apply(p);
-
+    // apply the syntax changes from the attributes and construct
+    // final syntax
+    let ts = attrs.apply(parser);
     quote! {
-        let (next, (#(#args),*)) = #ts(input)?;
-        Ok((next, #struct_name { #(#args),* }))
+        let (next, #bindings) = #ts(input)?;
+        Ok((next, #struct_name { #(#idents),* }))
     }
 }
 
+/// Generates a vec of parsers that parse each field
+/// in an enum or struct.
 fn field_parser(fields: &Fields) -> Vec<TokenStream> {
     let field_iter = match fields {
         Fields::Unnamed(fields) => fields.unnamed.iter(),
         Fields::Named(fields) => fields.named.iter(),
-        _ => abort_call_site!("fields"),
+        Fields::Unit => return vec![],
     };
     field_iter
         .map(|f| {
-            let segs = match &f.ty {
-                syn::Type::Path(syn::TypePath {
-                    qself: None,
-                    path:
-                        syn::Path {
-                            leading_colon: None,
-                            segments,
-                        },
-                }) => segments.iter().last(),
-                _ => None,
-            }
-            .unwrap();
-            let type_name = &segs.ident;
-            if let syn::PathArguments::AngleBracketed(args) = &segs.arguments {
-                quote! {
-                    #type_name::#args::sexp_parse
-                }
-            } else {
-                quote! {
-                    #type_name::sexp_parse
-                }
+            let ty = &f.ty;
+            quote! {
+                <#ty>::sexp_parse
             }
         })
         .collect()
 }
 
-fn field_arguments(fields: &Fields) -> Vec<Ident> {
+/// Generates a Vec of identifiers from field names
+fn field_idents(fields: &Fields) -> Vec<Ident> {
     match fields {
         Fields::Unnamed(fields) => fields
             .unnamed
@@ -156,43 +175,58 @@ fn field_arguments(fields: &Fields) -> Vec<Ident> {
                 None => abort_call_site!("Expected named field"),
             })
             .collect(),
-        _ => abort_call_site!("Don't support this kind of field"),
+        Fields::Unit => vec![],
     }
 }
 
+/// Generates a parser for a single variant in an enum type.
 fn variant_parser(
     id: &Ident,
     var: &Variant,
     attrs: &mut FieldAttrs,
 ) -> TokenStream {
     let name = &var.ident;
-    let fields = field_parser(&var.fields);
-    let args = field_arguments(&var.fields);
-    let (arg_syn, field_syn) = if var.fields.len() == 1 {
-        (
-            quote! {
-                #( #args )*
-            },
-            quote! {
-                #( preceded(multispace1, #fields) )*
-            },
-        )
+    let fld_par = field_parser(&var.fields);
+    let idents = field_idents(&var.fields);
+    let binders = field_binder_syn(&idents);
+
+    let field_syn = if var.fields.len() == 0 {
+        quote! { multispace0 }
+    } else if var.fields.len() == 1 {
+        quote! {
+            #( preceded(multispace1, #fld_par) )*
+        }
     } else {
-        (
-            quote! {
-                (#( #args ),*)
-            },
-            quote! {
-                tuple((#( preceded(multispace1, #fields) ),*))
-            },
-        )
+        quote! {
+            tuple((#( preceded(multispace1, #fld_par) ),*))
+        }
     };
 
+    // check if the enum takes arguments
+    let enum_constr = if var.fields.len() == 0 {
+        quote! { #id::#name }
+    } else {
+        quote! { #id::#name(#(#idents),*) }
+    };
+
+    // apply attribute syntax changes and construct final parser
     let ts = attrs.apply(field_syn);
     quote! {
         |i: &'a str| {
-            let (next, #arg_syn) = #ts(i)?;
-            Ok((next, #id::#name(#(#args),*)))
+            let (next, #binders) = #ts(i)?;
+            Ok((next, #enum_constr))
         }
+    }
+}
+
+/// Helper function to generate the syntax for binding and deconstructing
+/// identifers that we get from calling parsers
+fn field_binder_syn(idents: &Vec<Ident>) -> TokenStream {
+    if idents.len() == 0 {
+        quote! { _ }
+    } else if idents.len() == 1 {
+        quote! { #(#idents),* }
+    } else {
+        quote! { (#(#idents),*) }
     }
 }

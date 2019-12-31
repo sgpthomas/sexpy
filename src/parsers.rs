@@ -8,6 +8,8 @@ use nom::{
     IResult,
 };
 
+/// Create a parser that surrounds whatever `inner` parses
+/// with brackets or parentheses
 pub fn surround<'a, O1, F>(
     inner: F,
     input: &'a str,
@@ -15,26 +17,31 @@ pub fn surround<'a, O1, F>(
 where
     F: Fn(&'a str) -> IResult<&'a str, O1, VerboseError<&'a str>>,
 {
+    // look the first char without consuming it
     let res: IResult<&'a str, char, VerboseError<&'a str>> =
-        peek(context("test", anychar))(input);
+        peek(anychar)(input);
 
     if let Ok((_, '(')) = res {
+        // if its open paren, parse with parens
         delimited(
             char('('),
             preceded(multispace0, inner),
             context("closing paren", cut(preceded(multispace0, char(')')))),
         )(input)
     } else if let Ok((_, '[')) = res {
+        // if its open paren, parse with brackets
         delimited(
             char('['),
             preceded(multispace0, inner),
-            context("closing paren", cut(preceded(multispace0, char(']')))),
+            context("closing bracket", cut(preceded(multispace0, char(']')))),
         )(input)
     } else {
         IResult::Err(Error(VerboseError::from_char(input, '(')))
     }
 }
 
+/// Parses a `head` pattern. Takes a string `head_tag` and a parser, `inner`
+/// and creates a parser for [`head tag` `inner`]
 pub fn head<'a, O1, F>(
     head_tag: &'a str,
     inner: F,
