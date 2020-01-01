@@ -9,7 +9,7 @@ pub use nom::{
     branch::alt,
     bytes::complete::tag,
     character::complete::{
-        alpha1, alphanumeric0, digit1, multispace0, multispace1,
+        alpha1, alphanumeric0, char, digit1, multispace0, multispace1,
     },
     combinator::opt,
     error::{context, convert_error, VerboseError},
@@ -91,13 +91,13 @@ mod tests {
         #[sexpy(head = "port")]
         struct Portdef {
             name: String,
-            width: u64,
+            width: i64,
         }
 
-        let input = "(port foo 32)";
+        let input = "(port foo -32)";
         let gold = Portdef {
             name: "foo".to_string(),
-            width: 32,
+            width: -32,
         };
         assert_eq!(Portdef::parse(input), Ok(gold))
     }

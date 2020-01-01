@@ -22,6 +22,47 @@ impl Sexpy for u64 {
     }
 }
 
+impl Sexpy for u32 {
+    fn sexp_parse(input: &str) -> IResult<&str, Self, VerboseError<&str>>
+    where
+        Self: Sized,
+    {
+        let (next, digits) = digit1(input)?;
+        let num = digits.parse::<u32>().unwrap(); // XXX(sam) fix
+        Ok((next, num))
+    }
+}
+
+impl Sexpy for i64 {
+    fn sexp_parse(input: &str) -> IResult<&str, Self, VerboseError<&str>>
+    where
+        Self: Sized,
+    {
+        let (next, (neg, digits)) = tuple((opt(char('-')), digit1))(input)?;
+        let num = digits.parse::<i64>().unwrap(); // XXX(sam) fix
+        if neg.is_some() {
+            Ok((next, -num))
+        } else {
+            Ok((next, num))
+        }
+    }
+}
+
+impl Sexpy for i32 {
+    fn sexp_parse(input: &str) -> IResult<&str, Self, VerboseError<&str>>
+    where
+        Self: Sized,
+    {
+        let (next, (neg, digits)) = tuple((opt(char('-')), digit1))(input)?;
+        let num = digits.parse::<i32>().unwrap(); // XXX(sam) fix
+        if neg.is_some() {
+            Ok((next, -num))
+        } else {
+            Ok((next, num))
+        }
+    }
+}
+
 impl<T: Sexpy> Sexpy for Option<T> {
     fn sexp_parse(input: &str) -> IResult<&str, Self, VerboseError<&str>>
     where
