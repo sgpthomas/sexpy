@@ -1,4 +1,5 @@
 [package]
+description = "Derives sexpy trait definitions for types"
 name = "sexpy_derive"
 repository = "https://github.com/sgpthomas/sexpy/sexpy_derive"
 readme = "README.md"
