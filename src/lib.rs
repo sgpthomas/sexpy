@@ -129,4 +129,21 @@ mod tests {
         let input = "(plant)";
         assert_eq!(Plant::parse(input), Ok(Plant::PalmTree))
     }
+
+    #[test]
+    fn named_enum_fields() {
+        #[derive(Sexpy, Debug, PartialEq)]
+        enum Plant {
+            PalmTree { width: u64, name: String },
+            Cactus { height: u64 },
+        }
+
+        assert_eq!(
+            Plant::parse("(plant 200 cm)"),
+            Ok(Plant::PalmTree {
+                width: 200,
+                name: "cm".to_string()
+            })
+        )
+    }
 }

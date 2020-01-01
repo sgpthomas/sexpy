@@ -205,6 +205,9 @@ fn variant_parser(
     // check if the enum takes arguments
     let enum_constr = if var.fields.len() == 0 {
         quote! { #id::#name }
+    } else if let Fields::Named(_) = &var.fields {
+        // XXX(sam) I don't like this
+        quote! { #id::#name { #(#idents),* }  }
     } else {
         quote! { #id::#name(#(#idents),*) }
     };
