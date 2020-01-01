@@ -1,5 +1,9 @@
 [package]
 name = "sexpy_derive"
+repository = "https://github.com/sgpthomas/sexpy/sexpy_derive"
+readme = "README.md"
+license = "MIT"
+keywords = ["s-expression", "parser", "programming language"]
 version = "0.1.0"
 authors = ["Samuel Thomas <sgpthomas@gmail.com>"]
 edition = "2018"
