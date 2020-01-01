@@ -7,3 +7,6 @@ control of the parsing of the language.
 - Nicer parsing messages
 - After parsing, allow error messages to point to syntax
 - Write documentation
+
+## Comparison to Serde
+...
