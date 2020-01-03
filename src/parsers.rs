@@ -29,7 +29,7 @@ where
             context("closing paren", cut(preceded(multispace0, char(')')))),
         )(input)
     } else if let Ok((_, '[')) = res {
-        // if its open paren, parse with brackets
+        // if its open bracket, parse with brackets
         delimited(
             char('['),
             preceded(multispace0, inner),
@@ -40,11 +40,13 @@ where
     }
 }
 
+/// Takes in a `word` and returns `()` if the first word matches, otherwise
+/// returns an Error
 pub fn word<'a>(
     word: &'a str,
 ) -> impl Fn(&'a str) -> IResult<&'a str, (), VerboseError<&'a str>> {
     move |i: &'a str| {
-        let chars = " ()[]{}\n\t\r";
+        let chars = " ()[]{}\n\t\r;";
         let (rest, st) =
             // take characters until word boundary
             context("matching word", take_till(|c| chars.contains(c)))(i)?;
@@ -70,12 +72,3 @@ where
 {
     preceded(context("incorrect head", word(head_tag)), cut(inner))
 }
-
-// (seq
-//  (par
-//   (enable a0 const0)
-//   (enable b0 const1))
-//  (enable gt0 a0 const2)
-//  (if (@ gt0 out)
-//   (enable y0 const3)
-//   (enable z0 const4)))
