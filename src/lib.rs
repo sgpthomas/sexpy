@@ -9,9 +9,9 @@ pub use nom::{
     branch::alt,
     bytes::complete::tag,
     character::complete::{
-        alpha1, alphanumeric0, char, digit1, multispace0, multispace1,
+        alpha1, alphanumeric0, char, digit1, multispace0, multispace1, none_of,
     },
-    combinator::opt,
+    combinator::{cut, opt},
     error::{context, convert_error, VerboseError},
     multi::many0,
     sequence::{preceded, tuple},
@@ -205,5 +205,25 @@ mod tests {
             Plant::parse("(joshua-tree carolina 4)"),
             Ok(Plant::JoshuaTree("carolina".to_string(), 4))
         );
+    }
+
+    #[test]
+    fn vector() {
+        #[derive(Sexpy, Debug, PartialEq)]
+        struct Song {
+            name: String,
+            #[sexpy(surround)]
+            instrs: Vec<String>,
+            notes: Vec<u64>,
+        }
+
+        assert_eq!(
+            Song::parse("(song purr (piano cat) 11 12 13 12 13)"),
+            Ok(Song {
+                name: "purr".to_string(),
+                instrs: vec!["piano".to_string(), "cat".to_string()],
+                notes: vec![11, 12, 13, 12, 13]
+            })
+        )
     }
 }

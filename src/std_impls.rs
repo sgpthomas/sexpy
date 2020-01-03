@@ -6,8 +6,9 @@ impl Sexpy for String {
     where
         Self: Sized,
     {
-        let (next, (s, s1)) = tuple((alpha1, alphanumeric0))(input)?;
-        Ok((next, format!("{}{}", s, s1)))
+        let chars = " ()[]{}\"\'\\;";
+        let (next, (s, s1)) = tuple((alpha1, many0(none_of(chars))))(input)?;
+        Ok((next, format!("{}{}", s, s1.into_iter().collect::<String>())))
     }
 }
 
@@ -78,8 +79,7 @@ impl<T: Sexpy> Sexpy for Vec<T> {
     where
         Self: Sized,
     {
-        let (next, res) =
-            surround(many0(preceded(multispace0, T::sexp_parse)), input)?;
+        let (next, res) = many0(preceded(multispace0, T::sexp_parse))(input)?;
         Ok((next, res))
     }
 }

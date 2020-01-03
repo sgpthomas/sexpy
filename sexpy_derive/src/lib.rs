@@ -106,6 +106,9 @@ fn struct_parser(
     // generate a parser for each field
     let fields = field_parser(&data.fields);
 
+    // let mut attrs = FieldAttrs::from_attributes(&var.attrs);
+    // variant_parser(parse_name, var, &mut attrs)
+
     // get the identifiers from the fields
     let idents = field_idents(&data.fields);
     let idents_str: Vec<String> =
@@ -119,12 +122,17 @@ fn struct_parser(
         }
     } else if data.fields.len() <= 1 {
         quote! {
-            #(context(#idents_str, preceded(multispace1, #fields)))*
+            #(context(#idents_str, preceded(multispace0, #fields)))*
         }
     } else {
+        let fst_fld = &fields[0];
+        let fst_id = &idents_str[0];
+        let rest_fld = &fields[1..];
+        let rest_id = &idents_str[1..];
         quote! {
             tuple((
-                #(context(#idents_str, preceded(multispace1, #fields))),*
+                context(#fst_id, preceded(multispace0, #fst_fld)),
+                #(context(#rest_id, preceded(multispace1, #rest_fld))),*
             ))
         }
     };
@@ -149,9 +157,11 @@ fn field_parser(fields: &Fields) -> Vec<TokenStream> {
     field_iter
         .map(|f| {
             let ty = &f.ty;
-            quote! {
+            let syn = quote! {
                 <#ty>::sexp_parse
-            }
+            };
+            let attrs = FieldAttrs::from_attributes(&f.attrs);
+            attrs.apply(syn)
         })
         .collect()
 }
@@ -190,15 +200,22 @@ fn variant_parser(
     let idents = field_idents(&var.fields);
     let binders = field_binder_syn(&idents);
 
+    let context = format!("Parsing {}", name.to_string());
+
     let field_syn = if var.fields.len() == 0 {
         quote! { multispace0 }
     } else if var.fields.len() == 1 {
         quote! {
-            #( preceded(multispace1, #fld_par) )*
+            #( context(#context, preceded(multispace0, #fld_par)) )*
         }
     } else {
+        let fst_fld = &fld_par[0];
+        let res_fld = &fld_par[1..];
         quote! {
-            tuple((#( preceded(multispace1, #fld_par) ),*))
+            context(#context, tuple((
+                preceded(multispace0, #fst_fld),
+                #( preceded(multispace1, #res_fld) ),*
+            )))
         }
     };
 
@@ -206,11 +223,9 @@ fn variant_parser(
     let enum_constr = if var.fields.len() == 0 {
         quote! { #id::#name }
     } else if let Fields::Named(_) = &var.fields {
-        // XXX(sam) I don't like this
+        // XXX(sam) I don't like this ^^^^^^^
         quote! { #id::#name { #(#idents),* }  }
     } else {
-        // let x = &var.fields;
-        // println!("{:#?}", quote! {#x});
         quote! { #id::#name(#(#idents),*) }
     };
 

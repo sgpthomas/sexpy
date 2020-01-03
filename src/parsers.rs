@@ -44,13 +44,17 @@ pub fn word<'a>(
     word: &'a str,
 ) -> impl Fn(&'a str) -> IResult<&'a str, (), VerboseError<&'a str>> {
     move |i: &'a str| {
+        let chars = " ()[]{}\n\t\r";
         let (rest, st) =
             // take characters until word boundary
-            context("matching word", take_till(|c| " ()[]{}".contains(c)))(i)?;
+            context("matching word", take_till(|c| chars.contains(c)))(i)?;
         if st == word {
             Ok((rest, ()))
         } else {
-            IResult::Err(Error(VerboseError::from_char(i, '*')))
+            IResult::Err(Error(VerboseError::from_char(
+                i,
+                word.as_bytes()[0].into(),
+            )))
         }
     }
 }
@@ -66,3 +70,12 @@ where
 {
     preceded(context("incorrect head", word(head_tag)), cut(inner))
 }
+
+// (seq
+//  (par
+//   (enable a0 const0)
+//   (enable b0 const1))
+//  (enable gt0 a0 const2)
+//  (if (@ gt0 out)
+//   (enable y0 const3)
+//   (enable z0 const4)))

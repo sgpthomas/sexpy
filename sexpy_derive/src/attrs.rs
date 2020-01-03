@@ -162,7 +162,7 @@ impl SexpyAttr<FieldAttrEnum> for FieldAttrs {
 
         if self.surround {
             res = quote! { (|i: &'a str| surround(#res, i)) }
-        }
+        };
 
         res
     }
