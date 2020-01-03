@@ -94,12 +94,13 @@ mod tests {
             width: i64,
         }
 
-        let input = "(port foo -32)";
-        let gold = Portdef {
-            name: "foo".to_string(),
-            width: -32,
-        };
-        assert_eq!(Portdef::parse(input), Ok(gold))
+        assert_eq!(
+            Portdef::parse("(port foo -32)"),
+            Ok(Portdef {
+                name: "foo".to_string(),
+                width: -32,
+            })
+        )
     }
 
     #[test]
@@ -145,5 +146,42 @@ mod tests {
                 name: "cm".to_string()
             })
         )
+    }
+
+    #[test]
+    fn same_name() {
+        #[derive(Sexpy, Debug, PartialEq)]
+        #[sexpy(nosurround, head = "foo")]
+        struct Left {
+            item: String,
+        }
+
+        #[derive(Sexpy, Debug, PartialEq)]
+        #[sexpy(nosurround, head = "foo-bar")]
+        struct Right {
+            item: u64,
+        }
+
+        #[derive(Sexpy, Debug, PartialEq)]
+        enum Either {
+            Left { data: Left },
+            Right { data: Right },
+        }
+
+        assert_eq!(
+            Either::parse("(either foo hi)"),
+            Ok(Either::Left {
+                data: Left {
+                    item: "hi".to_string()
+                }
+            })
+        );
+
+        assert_eq!(
+            Either::parse("(either foo-bar 32)"),
+            Ok(Either::Right {
+                data: Right { item: 32 }
+            })
+        );
     }
 }

@@ -1,5 +1,5 @@
 use nom::{
-    bytes::complete::tag,
+    bytes::complete::take_till,
     character::complete::{anychar, char, multispace0},
     combinator::{cut, peek},
     error::{context, ParseError, VerboseError},
@@ -40,6 +40,21 @@ where
     }
 }
 
+pub fn word<'a>(
+    word: &'a str,
+) -> impl Fn(&'a str) -> IResult<&'a str, (), VerboseError<&'a str>> {
+    move |i: &'a str| {
+        let (rest, st) =
+            // take characters until word boundary
+            context("matching word", take_till(|c| " ()[]{}".contains(c)))(i)?;
+        if st == word {
+            Ok((rest, ()))
+        } else {
+            IResult::Err(Error(VerboseError::from_char(i, ' ')))
+        }
+    }
+}
+
 /// Parses a `head` pattern. Takes a string `head_tag` and a parser, `inner`
 /// and creates a parser for [`head tag` `inner`]
 pub fn head<'a, O1, F>(
@@ -49,5 +64,5 @@ pub fn head<'a, O1, F>(
 where
     F: Fn(&'a str) -> IResult<&'a str, O1, VerboseError<&'a str>>,
 {
-    preceded(context("incorrect head", tag(head_tag)), cut(inner))
+    preceded(context("incorrect head", word(head_tag)), cut(inner))
 }
