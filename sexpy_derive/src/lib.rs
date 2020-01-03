@@ -209,6 +209,8 @@ fn variant_parser(
         // XXX(sam) I don't like this
         quote! { #id::#name { #(#idents),* }  }
     } else {
+        // let x = &var.fields;
+        // println!("{:#?}", quote! {#x});
         quote! { #id::#name(#(#idents),*) }
     };
 

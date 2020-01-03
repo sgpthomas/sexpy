@@ -184,4 +184,26 @@ mod tests {
             })
         );
     }
+
+    #[test]
+    fn no_head() {
+        #[derive(Sexpy, Debug, PartialEq)]
+        #[sexpy(nohead)]
+        enum Plant {
+            #[sexpy(head = "cactus")]
+            Cactus(String, u64),
+            #[sexpy(head = "joshua-tree")]
+            JoshuaTree(String, u64),
+        }
+
+        assert_eq!(
+            Plant::parse("(cactus josh 400)"),
+            Ok(Plant::Cactus("josh".to_string(), 400))
+        );
+
+        assert_eq!(
+            Plant::parse("(joshua-tree carolina 4)"),
+            Ok(Plant::JoshuaTree("carolina".to_string(), 4))
+        );
+    }
 }

@@ -64,12 +64,14 @@ pub trait SexpyAttr<EnumT: Parse> {
 
 // =============== Type Level Attributes ================ //
 pub struct TyAttrs {
+    pub nohead: bool,
     pub head: Option<String>,
     pub surround: bool,
 }
 
 #[derive(Debug)]
 pub enum TyAttrEnum {
+    NoHead(bool, Span),
     Head(String, Span),
     Surround(bool, Span),
 }
@@ -77,6 +79,7 @@ pub enum TyAttrEnum {
 impl SexpyAttr<TyAttrEnum> for TyAttrs {
     fn default() -> Self {
         TyAttrs {
+            nohead: false,
             head: None,
             surround: true,
         }
@@ -84,9 +87,12 @@ impl SexpyAttr<TyAttrEnum> for TyAttrs {
 
     fn apply(&self, ts: TokenStream) -> TokenStream {
         let mut res = ts;
-        if let Some(head) = &self.head {
-            res = quote! { (head(#head, #res)) }
-        };
+
+        if !self.nohead {
+            if let Some(head) = &self.head {
+                res = quote! { (head(#head, #res)) }
+            }
+        }
 
         if self.surround {
             res = quote! { (|i: &'a str| surround(#res, i)) }
@@ -98,6 +104,7 @@ impl SexpyAttr<TyAttrEnum> for TyAttrs {
     fn add_enum(&mut self, e: &TyAttrEnum) {
         use TyAttrEnum::*;
         match e {
+            NoHead(b, _) => self.nohead = *b,
             Head(s, _) => self.head = Some(s.to_string()),
             Surround(b, _) => self.surround = *b,
         }
@@ -117,6 +124,7 @@ impl Parse for TyAttrEnum {
                 let lit_val = lit.value();
                 Ok(Head(lit_val, lit.span()))
             }
+            "nohead" => Ok(NoHead(true, field.span())),
             "nosurround" => Ok(Surround(false, field.span())),
             _ => Err(Error::new(
                 field.span(),
@@ -149,7 +157,7 @@ impl SexpyAttr<FieldAttrEnum> for FieldAttrs {
     fn apply(&self, ts: TokenStream) -> TokenStream {
         let mut res = ts;
         if let Some(head) = &self.head {
-            res = quote! { preceded(multispace1, head(#head, #res)) }
+            res = quote! { preceded(multispace0, head(#head, #res)) }
         };
 
         if self.surround {

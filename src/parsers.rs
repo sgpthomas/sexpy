@@ -50,7 +50,7 @@ pub fn word<'a>(
         if st == word {
             Ok((rest, ()))
         } else {
-            IResult::Err(Error(VerboseError::from_char(i, ' ')))
+            IResult::Err(Error(VerboseError::from_char(i, '*')))
         }
     }
 }
