@@ -1,12 +1,41 @@
 use nom::{
+    branch::alt,
     bytes::complete::take_till,
-    character::complete::{anychar, char, multispace0},
-    combinator::{cut, peek},
+    character::complete::{anychar, char, none_of, one_of},
+    combinator::{cut, map, peek},
     error::{context, ParseError, VerboseError},
+    multi::{many0, many1},
     sequence::{delimited, preceded},
     Err::Error,
     IResult,
 };
+
+pub fn ignore<'a, F, O1>(
+    inner: F,
+) -> impl Fn(&'a str) -> IResult<&'a str, (), VerboseError<&'a str>>
+where
+    F: Fn(&'a str) -> IResult<&'a str, O1, VerboseError<&'a str>>,
+{
+    map(inner, |_| ())
+}
+
+pub fn comment<'a>(
+    input: &'a str,
+) -> IResult<&'a str, (), VerboseError<&'a str>> {
+    ignore(preceded(char(';'), many0(none_of("\n"))))(input)
+}
+
+pub fn wordbreak0<'a>(
+    input: &'a str,
+) -> IResult<&'a str, (), VerboseError<&'a str>> {
+    ignore(many0(alt((ignore(one_of(" \t\r\n")), comment))))(input)
+}
+
+pub fn wordbreak1<'a>(
+    input: &'a str,
+) -> IResult<&'a str, (), VerboseError<&'a str>> {
+    ignore(many1(alt((ignore(one_of(" \t\r\n")), comment))))(input)
+}
 
 /// Create a parser that surrounds whatever `inner` parses
 /// with brackets or parentheses
@@ -25,15 +54,15 @@ where
         // if its open paren, parse with parens
         delimited(
             char('('),
-            preceded(multispace0, inner),
-            context("closing paren", cut(preceded(multispace0, char(')')))),
+            preceded(wordbreak0, inner),
+            context("closing paren", cut(preceded(wordbreak0, char(')')))),
         )(input)
     } else if let Ok((_, '[')) = res {
         // if its open bracket, parse with brackets
         delimited(
             char('['),
-            preceded(multispace0, inner),
-            context("closing bracket", cut(preceded(multispace0, char(']')))),
+            preceded(wordbreak0, inner),
+            context("closing bracket", cut(preceded(wordbreak0, char(']')))),
         )(input)
     } else {
         IResult::Err(Error(VerboseError::from_char(input, '(')))

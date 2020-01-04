@@ -79,7 +79,7 @@ impl<T: Sexpy> Sexpy for Vec<T> {
     where
         Self: Sized,
     {
-        let (next, res) = many0(preceded(multispace0, T::sexp_parse))(input)?;
+        let (next, res) = many0(preceded(wordbreak0, T::sexp_parse))(input)?;
         Ok((next, res))
     }
 }

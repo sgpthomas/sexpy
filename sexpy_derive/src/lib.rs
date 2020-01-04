@@ -118,11 +118,11 @@ fn struct_parser(
     // turn the field parsers into a single tokenstream
     let parser = if data.fields.len() == 0 {
         quote! {
-            multispace0
+            wordbreak0
         }
     } else if data.fields.len() <= 1 {
         quote! {
-            #(context(#idents_str, preceded(multispace0, #fields)))*
+            #(context(#idents_str, preceded(wordbreak0, #fields)))*
         }
     } else {
         let fst_fld = &fields[0];
@@ -131,8 +131,8 @@ fn struct_parser(
         let rest_id = &idents_str[1..];
         quote! {
             tuple((
-                context(#fst_id, preceded(multispace0, #fst_fld)),
-                #(context(#rest_id, preceded(multispace1, #rest_fld))),*
+                context(#fst_id, preceded(wordbreak0, #fst_fld)),
+                #(context(#rest_id, preceded(wordbreak1, #rest_fld))),*
             ))
         }
     };
@@ -203,18 +203,18 @@ fn variant_parser(
     let context = format!("Parsing {}", name.to_string());
 
     let field_syn = if var.fields.len() == 0 {
-        quote! { multispace0 }
+        quote! { wordbreak0 }
     } else if var.fields.len() == 1 {
         quote! {
-            #( context(#context, preceded(multispace0, #fld_par)) )*
+            #( context(#context, preceded(wordbreak0, #fld_par)) )*
         }
     } else {
         let fst_fld = &fld_par[0];
         let res_fld = &fld_par[1..];
         quote! {
             context(#context, tuple((
-                preceded(multispace0, #fst_fld),
-                #( preceded(multispace1, #res_fld) ),*
+                preceded(wordbreak0, #fst_fld),
+                #( preceded(wordbreak1, #res_fld) ),*
             )))
         }
     };

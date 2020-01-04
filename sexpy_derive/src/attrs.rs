@@ -157,7 +157,7 @@ impl SexpyAttr<FieldAttrEnum> for FieldAttrs {
     fn apply(&self, ts: TokenStream) -> TokenStream {
         let mut res = ts;
         if let Some(head) = &self.head {
-            res = quote! { preceded(multispace0, head(#head, #res)) }
+            res = quote! { preceded(wordbreak0, head(#head, #res)) }
         };
 
         if self.surround {

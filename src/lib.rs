@@ -24,7 +24,7 @@ pub trait Sexpy {
     where
         Self: Sized,
     {
-        match Self::sexp_parse(input) {
+        match preceded(wordbreak0, Self::sexp_parse)(input) {
             Ok((_, x)) => Ok(x),
             Err(Err::Error(e)) => Err(convert_error(input, e)),
             Err(Err::Failure(e)) => Err(convert_error(input, e)),
@@ -219,6 +219,28 @@ mod tests {
 
         assert_eq!(
             Song::parse("(song purr (piano cat) 11 12 13 12 13)"),
+            Ok(Song {
+                name: "purr".to_string(),
+                instrs: vec!["piano".to_string(), "cat".to_string()],
+                notes: vec![11, 12, 13, 12, 13]
+            })
+        )
+    }
+
+    #[test]
+    fn comments() {
+        #[derive(Sexpy, Debug, PartialEq)]
+        struct Song {
+            name: String,
+            #[sexpy(surround)]
+            instrs: Vec<String>,
+            notes: Vec<u64>,
+        }
+
+        assert_eq!(
+            Song::parse(
+                "; my cool song\n(song purr (piano cat) ; the good part!\n11 12 13 12 13)"
+            ),
             Ok(Song {
                 name: "purr".to_string(),
                 instrs: vec!["piano".to_string(), "cat".to_string()],
