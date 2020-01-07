@@ -47,10 +47,38 @@ impl<Input> ParseError<Input> for SexpyError<Input> {
 }
 
 impl<Input> SexpyError<Input> {
+    /// Make a `SexpyError` from an Input and a String
     pub fn from_word(input: Input, w: String) -> Self {
         SexpyError {
             errors: vec![(input, SexpyErrorKind::Word(w))],
         }
+    }
+}
+
+impl SexpyError<&str> {
+    /// Converts a `SexpyError` into a formatted string.
+    /// Only shows the topmost parsing error. Use `convert_error_verbose`
+    /// to get the whole error stack
+    pub fn convert_error(&self, input: &str) -> String {
+        if self.errors.len() == 0 {
+            panic!("No errors found")
+        } else {
+            format_error(input, 0, &self.errors[0])
+        }
+    }
+
+    /// Converts a `SexpyError` into a formated string.
+    /// Shows the entire error stack. Use `convert_error` to show
+    /// only the topmost error
+    #[allow(unused)]
+    pub fn convert_error_verbose(&self, input: &str) -> String {
+        let mut result = String::new();
+
+        for (i, error) in self.errors.iter().enumerate() {
+            result += &format_error(input, i, error);
+        }
+
+        result
     }
 }
 
@@ -167,24 +195,5 @@ fn format_error(input: &str, num: usize, e: &(&str, SexpyErrorKind)) -> String {
             }
         }
     }
-    result
-}
-
-pub fn convert_error(input: &str, e: SexpyError<&str>) -> String {
-    if e.errors.len() == 0 {
-        panic!("No errors found")
-    } else {
-        format_error(input, 0, &e.errors[0])
-    }
-}
-
-#[allow(unused)]
-pub fn convert_error_verbose(input: &str, e: SexpyError<&str>) -> String {
-    let mut result = String::new();
-
-    for (i, error) in e.errors.iter().enumerate() {
-        result += &format_error(input, i, error);
-    }
-
     result
 }

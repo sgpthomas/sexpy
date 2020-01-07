@@ -1,7 +1,7 @@
 mod error;
 mod parsers;
 mod std_impls;
-pub use error::{context, convert_error, SexpyError};
+pub use error::{context, SexpyError};
 pub use parsers::*;
 pub use sexpy_derive::Sexpy;
 
@@ -27,9 +27,23 @@ pub trait Sexpy {
     {
         match preceded(wordbreak0, Self::sexp_parse)(input) {
             Ok((_, x)) => Ok(x),
-            Err(Err::Error(e)) => Err(convert_error(input, e)),
-            Err(Err::Failure(e)) => Err(convert_error(input, e)),
+            Err(Err::Error(e)) => Err(e.convert_error(input)),
+            Err(Err::Failure(e)) => Err(e.convert_error(input)),
             Err(Err::Incomplete(_)) => Err("Need more bytes to nom".to_string()),
+        }
+    }
+    /// Takes a string and tries calling the parser for this trait on it.
+    fn parse_verbose(input: &str) -> Result<Self, String>
+    where
+        Self: Sized,
+    {
+        match preceded(wordbreak0, Self::sexp_parse)(input) {
+            Ok((_, x)) => Ok(x),
+            Err(Err::Error(e)) => Err(e.convert_error_verbose(input)),
+            Err(Err::Failure(e)) => Err(e.convert_error_verbose(input)),
+            Err(Err::Incomplete(_)) => {
+                Err("Incomplete input, need more bytes to nom".to_string())
+            }
         }
     }
 
