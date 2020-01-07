@@ -164,7 +164,7 @@ mod tests {
     }
 
     #[test]
-    fn same_name() {
+    fn same_prefix() {
         #[derive(Sexpy, Debug, PartialEq)]
         #[sexpy(nosurround, head = "foo")]
         struct Left {
