@@ -249,21 +249,4 @@ mod tests {
             })
         )
     }
-
-    #[test]
-    fn test_preceded() {
-        use nom::error::ErrorKind;
-        use nom::sequence::preceded;
-        let p = preceded(tag("abc"), cut(tag("efg")));
-
-        let t = alt((
-            head("test", cut(tag("blah"))),
-            head("timbre", cut(multispace1)),
-        ));
-
-        println!("{:?}", t("timbre"));
-
-        assert_eq!(p("abcefg"), Ok(("", "efg")));
-        assert_eq!(p("test blah"), Err(Err::Error(("hi", ErrorKind::Tag))));
-    }
 }
