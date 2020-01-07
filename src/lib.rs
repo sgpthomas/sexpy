@@ -1,5 +1,7 @@
+mod error;
 mod parsers;
 mod std_impls;
+pub use error::{context, convert_error, SexpyError};
 pub use parsers::*;
 pub use sexpy_derive::Sexpy;
 
@@ -12,7 +14,6 @@ pub use nom::{
         alpha1, alphanumeric0, char, digit1, multispace0, multispace1, none_of,
     },
     combinator::{cut, opt},
-    error::{context, convert_error, VerboseError},
     multi::many0,
     sequence::{preceded, tuple},
     Err, IResult,
@@ -35,7 +36,7 @@ pub trait Sexpy {
     /// The core parsing function that should be defined for each trait.
     fn sexp_parse<'a>(
         input: &'a str,
-    ) -> IResult<&'a str, Self, VerboseError<&'a str>>
+    ) -> IResult<&'a str, Self, SexpyError<&'a str>>
     where
         Self: Sized;
 }
@@ -247,5 +248,22 @@ mod tests {
                 notes: vec![11, 12, 13, 12, 13]
             })
         )
+    }
+
+    #[test]
+    fn test_preceded() {
+        use nom::error::ErrorKind;
+        use nom::sequence::preceded;
+        let p = preceded(tag("abc"), cut(tag("efg")));
+
+        let t = alt((
+            head("test", cut(tag("blah"))),
+            head("timbre", cut(multispace1)),
+        ));
+
+        println!("{:?}", t("timbre"));
+
+        assert_eq!(p("abcefg"), Ok(("", "efg")));
+        assert_eq!(p("test blah"), Err(Err::Error(("hi", ErrorKind::Tag))));
     }
 }

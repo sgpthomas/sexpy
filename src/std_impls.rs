@@ -2,7 +2,7 @@ use crate::*;
 use std::rc::Rc;
 
 impl Sexpy for String {
-    fn sexp_parse(input: &str) -> IResult<&str, Self, VerboseError<&str>>
+    fn sexp_parse(input: &str) -> IResult<&str, Self, SexpyError<&str>>
     where
         Self: Sized,
     {
@@ -13,7 +13,7 @@ impl Sexpy for String {
 }
 
 impl Sexpy for u64 {
-    fn sexp_parse(input: &str) -> IResult<&str, Self, VerboseError<&str>>
+    fn sexp_parse(input: &str) -> IResult<&str, Self, SexpyError<&str>>
     where
         Self: Sized,
     {
@@ -24,7 +24,7 @@ impl Sexpy for u64 {
 }
 
 impl Sexpy for u32 {
-    fn sexp_parse(input: &str) -> IResult<&str, Self, VerboseError<&str>>
+    fn sexp_parse(input: &str) -> IResult<&str, Self, SexpyError<&str>>
     where
         Self: Sized,
     {
@@ -35,7 +35,7 @@ impl Sexpy for u32 {
 }
 
 impl Sexpy for i64 {
-    fn sexp_parse(input: &str) -> IResult<&str, Self, VerboseError<&str>>
+    fn sexp_parse(input: &str) -> IResult<&str, Self, SexpyError<&str>>
     where
         Self: Sized,
     {
@@ -50,7 +50,7 @@ impl Sexpy for i64 {
 }
 
 impl Sexpy for i32 {
-    fn sexp_parse(input: &str) -> IResult<&str, Self, VerboseError<&str>>
+    fn sexp_parse(input: &str) -> IResult<&str, Self, SexpyError<&str>>
     where
         Self: Sized,
     {
@@ -65,7 +65,7 @@ impl Sexpy for i32 {
 }
 
 impl<T: Sexpy> Sexpy for Option<T> {
-    fn sexp_parse(input: &str) -> IResult<&str, Self, VerboseError<&str>>
+    fn sexp_parse(input: &str) -> IResult<&str, Self, SexpyError<&str>>
     where
         Self: Sized,
     {
@@ -75,7 +75,7 @@ impl<T: Sexpy> Sexpy for Option<T> {
 }
 
 impl<T: Sexpy> Sexpy for Vec<T> {
-    fn sexp_parse(input: &str) -> IResult<&str, Self, VerboseError<&str>>
+    fn sexp_parse(input: &str) -> IResult<&str, Self, SexpyError<&str>>
     where
         Self: Sized,
     {
@@ -85,7 +85,7 @@ impl<T: Sexpy> Sexpy for Vec<T> {
 }
 
 impl<T: Sexpy> Sexpy for Box<T> {
-    fn sexp_parse(input: &str) -> IResult<&str, Self, VerboseError<&str>>
+    fn sexp_parse(input: &str) -> IResult<&str, Self, SexpyError<&str>>
     where
         Self: Sized,
     {
@@ -95,7 +95,7 @@ impl<T: Sexpy> Sexpy for Box<T> {
 }
 
 impl<T: Sexpy> Sexpy for Rc<T> {
-    fn sexp_parse(input: &str) -> IResult<&str, Self, VerboseError<&str>>
+    fn sexp_parse(input: &str) -> IResult<&str, Self, SexpyError<&str>>
     where
         Self: Sized,
     {

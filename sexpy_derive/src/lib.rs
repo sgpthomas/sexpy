@@ -47,7 +47,7 @@ fn impl_sexpy(ast: &DeriveInput) -> TokenStream {
     quote! {
         impl Sexpy for #name {
             fn sexp_parse<'a>(input: &'a str) ->
-                IResult<&'a str, Self, VerboseError<&'a str>>
+                IResult<&'a str, Self, SexpyError<&'a str>>
             where
                 Self: Sized {
                 #parser
