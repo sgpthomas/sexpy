@@ -20,7 +20,7 @@ name as the head and the types of the fields as arguments. It parses the head pa
 by parentheses, brackets, or curly braces.
 
 For example, consider the following:
-```rust
+```rust,ignore
 #[derive(Sexpy)]
 struct Port {
   name: String,
@@ -37,7 +37,7 @@ uses the enum name as the head and the variant arguments as the pattern argument
 Each parser matches the pattern surrounded in parentheses, brackets, or curly braces.
 
 For example, consider the following enum definition:
-```rust
+```rust,ignore
 #[derive(Sexpy)]
 enum Plant {
   PalmTree(String, u64),      // parses pattern: (plant <string> <u64>)
@@ -47,7 +47,7 @@ enum Plant {
 ```
 This generates the three parsers annotated in the comments.
 What happens if two variants have the same arguments, like in the following example?
-```rust
+```rust,ignore
 #[derive(Sexpy)]
 enum Plant {
   Palm(String, u64),   // parses pattern: (plant <string> <u64>)
@@ -60,7 +60,7 @@ sub-parser; they take the same arguments! There are several ways to deal with th
 the simplest is to force the variant sub-parsers to use a head. You can do this
 with the `#[sexpy(head = "<str>")]` option.
 
-```
+```rust,ignore
 #[derive(Sexpy)]
 enum Plant {
   #[sexpy(head = "palm")]
@@ -78,7 +78,7 @@ these conflicts. The parsing options should make it easy to resolve them.
 ### Options
 You can modify the pattern the derived parser matches by specifying some attributes.
 The following are attributes that work at the type level, i.e:
-```
+```rust,ignore
 #[derive(Sexpy)]
 #[sexpy(...)] // <-----
 enum Plant { ... }
@@ -104,7 +104,7 @@ string argument, it looks like `head = "custom-name"`. A bool argument looks lik
 | `nosurround` | *none*   | Shortcut for `surround = false` |
 
 The following are variant level attributes. They look like:
-```
+```rust,ignore
 #[derive(Sexpy)]
 enum Plant {
   #[sexpy(head = "palm")]  // <-----
