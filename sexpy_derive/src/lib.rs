@@ -84,7 +84,7 @@ fn enum_parser(
         }
     } else {
         quote! {
-            alt((#( #parsers ),*))
+            nom::branch::alt((#( #parsers ),*))
         }
     };
 
@@ -118,11 +118,11 @@ fn struct_parser(
     // turn the field parsers into a single tokenstream
     let parser = if data.fields.len() == 0 {
         quote! {
-            wordbreak0
+            crate::parsers::wordbreak0
         }
     } else if data.fields.len() <= 1 {
         quote! {
-            #(context(#idents_str, preceded(wordbreak0, #fields)))*
+            #(crate::error::context(#idents_str, nom::sequence::preceded(crate::parsers::wordbreak0, #fields)))*
         }
     } else {
         let fst_fld = &fields[0];
@@ -130,9 +130,9 @@ fn struct_parser(
         let rest_fld = &fields[1..];
         let rest_id = &idents_str[1..];
         quote! {
-            tuple((
-                context(#fst_id, preceded(wordbreak0, #fst_fld)),
-                #(context(#rest_id, preceded(wordbreak1, #rest_fld))),*
+            nom::sequence::tuple((
+                crate::error::context(#fst_id, nom::sequence::preceded(crate::parsers::wordbreak0, #fst_fld)),
+                #(crate::error::context(#rest_id, nom::sequence::preceded(crate::parsers::wordbreak1, #rest_fld))),*
             ))
         }
     };
@@ -203,18 +203,18 @@ fn variant_parser(
     let context = format!("Parsing {}", name.to_string());
 
     let field_syn = if var.fields.len() == 0 {
-        quote! { wordbreak0 }
+        quote! { crate::parsers::wordbreak0 }
     } else if var.fields.len() == 1 {
         quote! {
-            #( context(#context, preceded(wordbreak0, #fld_par)) )*
+            #( crate::error::context(#context, nom::sequence::preceded(crate::parsers::wordbreak0, #fld_par)) )*
         }
     } else {
         let fst_fld = &fld_par[0];
         let res_fld = &fld_par[1..];
         quote! {
-            context(#context, tuple((
-                preceded(wordbreak0, #fst_fld),
-                #( preceded(wordbreak1, #res_fld) ),*
+            crate::error::context(#context, nom::sequence::tuple((
+                nom::sequence::preceded(crate::parsers::wordbreak0, #fst_fld),
+                #( nom::sequence::preceded(crate::parsers::wordbreak1, #res_fld) ),*
             )))
         }
     };

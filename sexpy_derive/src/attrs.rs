@@ -157,7 +157,7 @@ impl SexpyAttr<FieldAttrEnum> for FieldAttrs {
     fn apply(&self, ts: TokenStream) -> TokenStream {
         let mut res = ts;
         if let Some(head) = &self.head {
-            res = quote! { preceded(wordbreak0, head(#head, #res)) }
+            res = quote! { nom::sequence::preceded(wordbreak0, head(#head, #res)) }
         };
 
         if self.surround {
@@ -189,7 +189,7 @@ impl Parse for FieldAttrEnum {
                 Ok(Head(lit_val, lit.span()))
             }
             "surround" => Ok(Surround(true, field.span())),
-            "nosurround" => Ok(Surround(false, field.span())),
+            // "nosurround" => Ok(Surround(false, field.span())),
             _ => Err(Error::new(
                 field.span(),
                 format!("expected `name`, found {}", field),
