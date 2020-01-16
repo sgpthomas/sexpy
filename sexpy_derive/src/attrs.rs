@@ -90,12 +90,12 @@ impl SexpyAttr<TyAttrEnum> for TyAttrs {
 
         if !self.nohead {
             if let Some(head) = &self.head {
-                res = quote! { (head(#head, #res)) }
+                res = quote! { (::sexpy::parsers::head(#head, #res)) }
             }
         }
 
         if self.surround {
-            res = quote! { (|i: &'a str| surround(#res, i)) }
+            res = quote! { (|i: &'a str| ::sexpy::parsers::surround(#res, i)) }
         }
 
         res
@@ -157,11 +157,15 @@ impl SexpyAttr<FieldAttrEnum> for FieldAttrs {
     fn apply(&self, ts: TokenStream) -> TokenStream {
         let mut res = ts;
         if let Some(head) = &self.head {
-            res = quote! { nom::sequence::preceded(wordbreak0, head(#head, #res)) }
+            res = quote! {
+                nom::sequence::preceded(
+                    ::sexpy::parsers::wordbreak0,
+                    ::sexpy::parsers::head(#head, #res))
+            }
         };
 
         if self.surround {
-            res = quote! { (|i: &'a str| surround(#res, i)) }
+            res = quote! { (|i: &'a str| ::sexpy::parsers::surround(#res, i)) }
         };
 
         res
