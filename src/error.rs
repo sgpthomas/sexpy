@@ -18,6 +18,8 @@ pub enum SexpyErrorKind {
     Char(char),
     /// indicates which word was expected by the `word` function
     Word(String),
+    /// indicates an error occurred while parsing a number
+    Number,
     /// error kind given by various nom parsers
     Nom(ErrorKind),
 }
@@ -51,6 +53,13 @@ impl<Input> SexpyError<Input> {
     pub fn from_word(input: Input, w: String) -> Self {
         SexpyError {
             errors: vec![(input, SexpyErrorKind::Word(w))],
+        }
+    }
+
+    /// Make a `SexpyErrorKind::Number` from an Input
+    pub fn number(input: Input) -> Self {
+        SexpyError {
+            errors: vec![(input, SexpyErrorKind::Number)],
         }
     }
 }
@@ -127,6 +136,10 @@ fn format_error(input: &str, num: usize, e: &(&str, SexpyErrorKind)) -> String {
                     num
                 );
             }
+            SexpyErrorKind::Number => {
+                result +=
+                    &format!("{}: expected a number, got empty input\n\n", num);
+            }
             SexpyErrorKind::Context(s) => {
                 result += &format!("{}: in {}, got empty input\n\n", num, s);
             }
@@ -174,6 +187,17 @@ fn format_error(input: &str, num: usize, e: &(&str, SexpyErrorKind)) -> String {
                 }
                 result += "^\n";
                 result += &format!("expected a keyword, found \"{}\"\n\n", w);
+            }
+            SexpyErrorKind::Number => {
+                result += &format!("{}: at line {}:\n", num, line);
+                result += &lines[line];
+                result += "\n";
+
+                if column > 0 {
+                    result += &repeat(' ').take(column).collect::<String>();
+                }
+                result += "^\n";
+                result += &format!("unable to parse number\n\n");
             }
             SexpyErrorKind::Context(s) => {
                 result += &format!("{}: at line {}, in {}:\n", num, line, s);

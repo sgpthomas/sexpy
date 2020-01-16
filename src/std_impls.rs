@@ -21,8 +21,10 @@ impl Sexpy for u64 {
         Self: Sized,
     {
         let (next, digits) = digit1(input)?;
-        let num = digits.parse::<u64>().unwrap(); // XXX(sam) fix
-        Ok((next, num))
+        match digits.parse::<u64>() {
+            Ok(num) => Ok((next, num)),
+            Err(_) => Err(Err::Error(SexpyError::number(input))),
+        }
     }
 }
 
@@ -33,8 +35,10 @@ impl Sexpy for u32 {
         Self: Sized,
     {
         let (next, digits) = digit1(input)?;
-        let num = digits.parse::<u32>().unwrap(); // XXX(sam) fix
-        Ok((next, num))
+        match digits.parse::<u32>() {
+            Ok(num) => Ok((next, num)),
+            Err(_) => Err(Err::Error(SexpyError::number(input))),
+        }
     }
 }
 
@@ -45,11 +49,15 @@ impl Sexpy for i64 {
         Self: Sized,
     {
         let (next, (neg, digits)) = tuple((opt(char('-')), digit1))(input)?;
-        let num = digits.parse::<i64>().unwrap(); // XXX(sam) fix
-        if neg.is_some() {
-            Ok((next, -num))
-        } else {
-            Ok((next, num))
+        match digits.parse::<i64>() {
+            Ok(num) => {
+                if neg.is_some() {
+                    Ok((next, -num))
+                } else {
+                    Ok((next, num))
+                }
+            }
+            Err(_) => Err(Err::Error(SexpyError::number(input))),
         }
     }
 }
@@ -61,11 +69,15 @@ impl Sexpy for i32 {
         Self: Sized,
     {
         let (next, (neg, digits)) = tuple((opt(char('-')), digit1))(input)?;
-        let num = digits.parse::<i32>().unwrap(); // XXX(sam) fix
-        if neg.is_some() {
-            Ok((next, -num))
-        } else {
-            Ok((next, num))
+        match digits.parse::<i32>() {
+            Ok(num) => {
+                if neg.is_some() {
+                    Ok((next, -num))
+                } else {
+                    Ok((next, num))
+                }
+            }
+            Err(_) => Err(Err::Error(SexpyError::number(input))),
         }
     }
 }
