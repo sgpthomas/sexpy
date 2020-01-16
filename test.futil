@@ -1,7 +1,0 @@
-(define/component hi
-  ([port hi 4])
-  ([port out 10] [port notin 31])
-  ([-> (@ test test) (@ this ater)]
-   [new adder stdadd]
-   [new adder0 stdadd])
-  )
