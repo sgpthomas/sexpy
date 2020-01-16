@@ -158,7 +158,7 @@ impl SexpyAttr<FieldAttrEnum> for FieldAttrs {
         let mut res = ts;
         if let Some(head) = &self.head {
             res = quote! {
-                nom::sequence::preceded(
+                ::sexpy::nom::sequence::preceded(
                     ::sexpy::parsers::wordbreak0,
                     ::sexpy::parsers::head(#head, #res))
             }

@@ -47,7 +47,7 @@ fn impl_sexpy(ast: &DeriveInput) -> TokenStream {
     quote! {
         impl Sexpy for #name {
             fn sexp_parse<'a>(input: &'a str) ->
-                nom::IResult<&'a str, Self, ::sexpy::error::SexpyError<&'a str>>
+                ::sexpy::nom::IResult<&'a str, Self, ::sexpy::error::SexpyError<&'a str>>
             where
                 Self: Sized {
                 #parser
@@ -84,7 +84,7 @@ fn enum_parser(
         }
     } else {
         quote! {
-            nom::branch::alt((#( #parsers ),*))
+            ::sexpy::nom::branch::alt((#( #parsers ),*))
         }
     };
 
@@ -122,7 +122,7 @@ fn struct_parser(
         }
     } else if data.fields.len() <= 1 {
         quote! {
-            #(::sexpy::error::context(#idents_str, nom::sequence::preceded(::sexpy::parsers::wordbreak0, #fields)))*
+            #(::sexpy::error::context(#idents_str, ::sexpy::nom::sequence::preceded(::sexpy::parsers::wordbreak0, #fields)))*
         }
     } else {
         let fst_fld = &fields[0];
@@ -130,9 +130,9 @@ fn struct_parser(
         let rest_fld = &fields[1..];
         let rest_id = &idents_str[1..];
         quote! {
-            nom::sequence::tuple((
-                ::sexpy::error::context(#fst_id, nom::sequence::preceded(::sexpy::parsers::wordbreak0, #fst_fld)),
-                #(::sexpy::error::context(#rest_id, nom::sequence::preceded(::sexpy::parsers::wordbreak1, #rest_fld))),*
+            ::sexpy::nom::sequence::tuple((
+                ::sexpy::error::context(#fst_id, ::sexpy::nom::sequence::preceded(::sexpy::parsers::wordbreak0, #fst_fld)),
+                #(::sexpy::error::context(#rest_id, ::sexpy::nom::sequence::preceded(::sexpy::parsers::wordbreak1, #rest_fld))),*
             ))
         }
     };
@@ -206,15 +206,15 @@ fn variant_parser(
         quote! { ::sexpy::parsers::wordbreak0 }
     } else if var.fields.len() == 1 {
         quote! {
-            #( ::sexpy::error::context(#context, nom::sequence::preceded(::sexpy::parsers::wordbreak0, #fld_par)) )*
+            #( ::sexpy::error::context(#context, ::sexpy::nom::sequence::preceded(::sexpy::parsers::wordbreak0, #fld_par)) )*
         }
     } else {
         let fst_fld = &fld_par[0];
         let res_fld = &fld_par[1..];
         quote! {
-            ::sexpy::error::context(#context, nom::sequence::tuple((
-                nom::sequence::preceded(::sexpy::parsers::wordbreak0, #fst_fld),
-                #( nom::sequence::preceded(::sexpy::parsers::wordbreak1, #res_fld) ),*
+            ::sexpy::error::context(#context, ::sexpy::nom::sequence::tuple((
+                ::sexpy::nom::sequence::preceded(::sexpy::parsers::wordbreak0, #fst_fld),
+                #( ::sexpy::nom::sequence::preceded(::sexpy::parsers::wordbreak1, #res_fld) ),*
             )))
         }
     };
