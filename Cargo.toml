@@ -5,7 +5,7 @@ readme = "README.md"
 license = "MIT"
 keywords = ["s-expression", "parser", "language"]
 name = "sexpy"
-version = "0.5.1"
+version = "0.5.2"
 authors = ["Samuel Thomas <sgpthomas@gmail.com>"]
 edition = "2018"
 
