@@ -27,6 +27,8 @@ fn impl_sexpy(ast: &DeriveInput) -> TokenStream {
     // name of the Struct or Enum
     let name = &ast.ident;
 
+    // println!("{:#?}", quote! {#ast});
+
     // parse type level attributes
     let mut attrs = TyAttrs::from_attributes(&ast.attrs);
 

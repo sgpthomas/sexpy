@@ -7,8 +7,6 @@ use syn::{
     Attribute, Error, Ident, LitStr, Token,
 };
 
-// ============ Trait Definitions ================ //
-
 /// Struct that represents the Sexpy attribute syntax.
 /// The syntax is simply a comma separated list of syntax
 /// defined by the parameter `EnumT`.
@@ -28,7 +26,7 @@ impl<EnumT: Parse> Parse for SexpyAttrSyn<EnumT> {
 
 /// A trait that handles generalizing definitions and syntax
 /// made over single attributes to lists of attributes
-pub trait SexpyAttr<EnumT: Parse> {
+pub trait SexpyAttr<EnumT: Parse + std::fmt::Debug> {
     /// The default constructor of Self. Represents
     /// the default settings of the attributes
     fn default() -> Self;
@@ -45,15 +43,18 @@ pub trait SexpyAttr<EnumT: Parse> {
     where
         Self: Sized,
     {
-        let attr_enums: Vec<EnumT> = attributes
+        let attr_enums = attributes
             .iter()
-            .map(|attr| match attr.parse_args_with(SexpyAttrSyn::parse) {
+            .filter(|attr| {
+                let ident = &attr.path.segments.first().unwrap().ident;
+                ident == "sexpy"
+            })
+            .map(|attr| match attr.parse_args::<SexpyAttrSyn<EnumT>>() {
                 Ok(a_enum) => a_enum,
-                Err(e) => abort!(e.span(), "Unknown field"),
+                Err(e) => abort!(e.span(), "{}", e),
             })
             .map(|attr_syn| attr_syn.attrs)
-            .flatten()
-            .collect();
+            .flatten();
         let mut res = Self::default();
         for e in attr_enums {
             res.add_enum(&e);
@@ -128,7 +129,7 @@ impl Parse for TyAttrEnum {
             "nosurround" => Ok(Surround(false, field.span())),
             _ => Err(Error::new(
                 field.span(),
-                format!("expected `name`, found {}", field),
+                format!("`{}` is not a known field", field),
             )),
         }
     }
@@ -196,7 +197,7 @@ impl Parse for FieldAttrEnum {
             // "nosurround" => Ok(Surround(false, field.span())),
             _ => Err(Error::new(
                 field.span(),
-                format!("expected `name`, found {}", field),
+                format!("`{}` is not a known field", field),
             )),
         }
     }

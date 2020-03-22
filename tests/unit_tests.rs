@@ -224,3 +224,43 @@ fn comments() {
             })
         )
 }
+
+#[test]
+fn documentation() {
+    /// This is some documentation
+    #[derive(Sexpy, Debug, PartialEq)]
+    #[sexpy(head = "port")]
+    struct Portdef {
+        /// this is a string field
+        name: String,
+        /// and this is a int field
+        width: i64,
+    }
+
+    assert_eq!(
+        Portdef::parse("(port foo -32)"),
+        Ok(Portdef {
+            name: "foo".to_string(),
+            width: -32,
+        })
+    )
+}
+
+#[test]
+fn unknown_field() {
+    /// asdf
+    #[derive(Sexpy, Debug, PartialEq)]
+    #[sexpy(head = "port")]
+    struct Portdef {
+        name: String,
+        width: i64,
+    }
+
+    assert_eq!(
+        Portdef::parse("(port foo -32)"),
+        Ok(Portdef {
+            name: "foo".to_string(),
+            width: -32,
+        })
+    )
+}
