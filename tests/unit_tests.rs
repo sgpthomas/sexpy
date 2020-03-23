@@ -245,22 +245,3 @@ fn documentation() {
         })
     )
 }
-
-#[test]
-fn unknown_field() {
-    /// asdf
-    #[derive(Sexpy, Debug, PartialEq)]
-    #[sexpy(head = "port")]
-    struct Portdef {
-        name: String,
-        width: i64,
-    }
-
-    assert_eq!(
-        Portdef::parse("(port foo -32)"),
-        Ok(Portdef {
-            name: "foo".to_string(),
-            width: -32,
-        })
-    )
-}
