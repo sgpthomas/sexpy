@@ -65,7 +65,7 @@ fn enum_parser(
     attrs: &TyAttrs,
 ) -> TokenStream {
     // abort if there are no variants
-    if data.variants.len() == 0 {
+    if data.variants.is_empty() {
         abort_call_site!("Can not construct enum with no cases.")
     }
 
@@ -118,7 +118,7 @@ fn struct_parser(
     let bindings = field_binder_syn(&idents);
 
     // turn the field parsers into a single tokenstream
-    let parser = if data.fields.len() == 0 {
+    let parser = if data.fields.is_empty() {
         quote! {
             ::sexpy::parsers::wordbreak0
         }
@@ -204,7 +204,7 @@ fn variant_parser(
 
     let context = format!("Parsing {}", name.to_string());
 
-    let field_syn = if var.fields.len() == 0 {
+    let field_syn = if var.fields.is_empty() {
         quote! { ::sexpy::parsers::wordbreak0 }
     } else if var.fields.len() == 1 {
         quote! {
@@ -222,7 +222,7 @@ fn variant_parser(
     };
 
     // check if the enum takes arguments
-    let enum_constr = if var.fields.len() == 0 {
+    let enum_constr = if var.fields.is_empty() {
         quote! { #id::#name }
     } else if let Fields::Named(_) = &var.fields {
         // XXX(sam) I don't like this ^^^^^^^
@@ -243,8 +243,8 @@ fn variant_parser(
 
 /// Helper function to generate the syntax for binding and deconstructing
 /// identifers that we get from calling parsers
-fn field_binder_syn(idents: &Vec<Ident>) -> TokenStream {
-    if idents.len() == 0 {
+fn field_binder_syn(idents: &[Ident]) -> TokenStream {
+    if idents.is_empty() {
         quote! { _ }
     } else if idents.len() == 1 {
         quote! { #(#idents),* }

@@ -69,7 +69,7 @@ impl SexpyError<&str> {
     /// Only shows the topmost parsing error. Use `convert_error_verbose`
     /// to get the whole error stack
     pub fn convert_error(&self, input: &str) -> String {
-        if self.errors.len() == 0 {
+        if self.errors.is_empty() {
             panic!("No errors found")
         } else {
             format_error(input, 0, &self.errors[0])
@@ -171,11 +171,11 @@ fn format_error(input: &str, num: usize, e: &(&str, SexpyErrorKind)) -> String {
                     result += &repeat(' ').take(column).collect::<String>();
                 }
                 result += "^\n";
-                result += &format!(
-                    "expected '{}', found {}\n\n",
-                    c,
-                    substring.chars().next().unwrap()
-                );
+                let found = match substring.chars().next() {
+                    Some(x) => format!("'{}'", x),
+                    None => "<eof>".to_string(),
+                };
+                result += &format!("expected '{}', found {}\n\n", c, found);
             }
             SexpyErrorKind::Word(w) => {
                 result += &format!("{}: at line {}:\n", num, line);
@@ -197,7 +197,7 @@ fn format_error(input: &str, num: usize, e: &(&str, SexpyErrorKind)) -> String {
                     result += &repeat(' ').take(column).collect::<String>();
                 }
                 result += "^\n";
-                result += &format!("unable to parse number\n\n");
+                result += "unable to parse number\n\n";
             }
             SexpyErrorKind::Context(s) => {
                 result += &format!("{}: at line {}, in {}:\n", num, line, s);
