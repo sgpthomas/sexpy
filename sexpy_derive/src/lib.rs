@@ -134,7 +134,7 @@ fn struct_parser(
         quote! {
             ::sexpy::nom::sequence::tuple((
                 ::sexpy::error::context(#fst_id, ::sexpy::nom::sequence::preceded(::sexpy::parsers::wordbreak0, #fst_fld)),
-                #(::sexpy::error::context(#rest_id, ::sexpy::nom::sequence::preceded(::sexpy::parsers::wordbreak1, #rest_fld))),*
+                #(::sexpy::error::context(#rest_id, ::sexpy::nom::sequence::preceded(::sexpy::parsers::wordbreak0, #rest_fld))),*
             ))
         }
     };
@@ -216,7 +216,7 @@ fn variant_parser(
         quote! {
             ::sexpy::error::context(#context, ::sexpy::nom::sequence::tuple((
                 ::sexpy::nom::sequence::preceded(::sexpy::parsers::wordbreak0, #fst_fld),
-                #( ::sexpy::nom::sequence::preceded(::sexpy::parsers::wordbreak1, #res_fld) ),*
+                #( ::sexpy::nom::sequence::preceded(::sexpy::parsers::wordbreak0, #res_fld) ),*
             )))
         }
     };

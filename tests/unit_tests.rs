@@ -245,3 +245,28 @@ fn documentation() {
         })
     )
 }
+
+#[test]
+fn option() {
+    #[derive(Sexpy, Debug, PartialEq)]
+    struct Test {
+        name: String,
+        op: Option<String>,
+    }
+
+    assert_eq!(
+        Test::parse("(test hello asdf)"),
+        Ok(Test {
+            name: "hello".to_string(),
+            op: Some("asdf".to_string())
+        })
+    );
+
+    assert_eq!(
+        Test::parse("(test hello )"),
+        Ok(Test {
+            name: "hello".to_string(),
+            op: None
+        })
+    )
+}
