@@ -251,22 +251,35 @@ fn option() {
     #[derive(Sexpy, Debug, PartialEq)]
     struct Test {
         name: String,
-        op: Option<String>,
+        op: Option<A>,
+        another: u32,
+    }
+
+    #[derive(Sexpy, Debug, PartialEq)]
+    struct A {
+        field: String,
     }
 
     assert_eq!(
-        Test::parse("(test hello asdf)"),
+        Test::parse("(test hello (a asdf) 4)"),
         Ok(Test {
             name: "hello".to_string(),
-            op: Some("asdf".to_string())
+            op: Some(A {
+                field: "asdf".to_string()
+            }),
+            another: 4
         })
     );
 
     assert_eq!(
-        Test::parse("(test hello )"),
+        Test::parse(
+            "(test hello
+4)"
+        ),
         Ok(Test {
             name: "hello".to_string(),
-            op: None
+            op: None,
+            another: 4
         })
     )
 }

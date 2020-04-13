@@ -8,7 +8,7 @@ impl Sexpy for String {
     where
         Self: Sized,
     {
-        let chars = " ()[]{}\\;";
+        let chars = " ()[]{}\\;\n\t\r";
         let (next, (s, s1)) = tuple((alpha1, many0(none_of(chars))))(input)?;
         Ok((next, format!("{}{}", s, s1.into_iter().collect::<String>())))
     }
@@ -88,8 +88,10 @@ impl<T: Sexpy> Sexpy for Option<T> {
     where
         Self: Sized,
     {
-        let (next, res) = opt(T::sexp_parse)(input)?;
-        Ok((next, res))
+        match opt(T::sexp_parse)(input) {
+            Ok((next, res)) => Ok((next, res)),
+            Err(_) => Ok((input, None)),
+        }
     }
 }
 
